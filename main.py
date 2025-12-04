@@ -1081,6 +1081,12 @@ async def updates(ctx, sport: str, *, team_or_player: str = None):
             update_sports.start()
 
 
+@bot.command()
+async def botping(ctx):
+    """Check bot latency"""
+    await ctx.send(f'🏓 Pong! {round(bot.latency * 1000)}ms')
+
+
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user.name} (ID: {bot.user.id})")
