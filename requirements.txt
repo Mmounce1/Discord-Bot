@@ -2,11 +2,3 @@ discord.py>=2.3.0
 aiohttp>=3.9.0
 python-dotenv>=1.0.0
 Flask>=3.0.0
-
-echo "# Discord-Bot" >> README.md
-git init
-git add README.md
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/Mmounce1/Discord-Bot.git
-git push -u origin main
