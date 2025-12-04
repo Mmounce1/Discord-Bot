@@ -1,17 +1,3 @@
-from flask import Flask
-from threading import Thread
-
-app = Flask('')
-@app.route('/')
-def index():
-    return "discord bot okay"
-
-def run():
-    app.run(host='0.0.0.0', port=8080, debug=True)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
 discord.py==2.3.2
 aiohttp==3.9.1
 python-dotenv==1.0.0
@@ -37,6 +23,20 @@ git branch -M main
 git remote add origin https://github.com/Mmounce1/Discord-Bot.git
 git push -u origin main
 
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+@app.route('/')
+def index():
+    return "discord bot okay"
+
+def run():
+    app.run(host='0.0.0.0', port=8080, debug=True)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 import discord
 from discord.ext import commands, tasks
