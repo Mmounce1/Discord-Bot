@@ -851,12 +851,6 @@ async def player(ctx, sport: str, *, player_name: str):
 
 
 @bot.command()
-async def ping(ctx):
-    """Check bot latency"""
-    await ctx.send(f'🏓 Pong! {round(bot.latency * 1000)}ms')
-
-
-@bot.command()
 async def livescore(ctx, sport: str, *, search_term: str = None):
     """Get live scores with auto-updates for a specific sport or team"""
     sport = sport.lower()
@@ -1085,12 +1079,6 @@ async def updates(ctx, sport: str, *, team_or_player: str = None):
 
         if not update_sports.is_running():
             update_sports.start()
-
-
-@bot.command()
-async def ping(ctx):
-    """Check bot latency"""
-    await ctx.send(f'🏓 Pong! {round(bot.latency * 1000)}ms')
 
 
 @bot.event
