@@ -49,6 +49,7 @@ bot = commands.Bot(command_prefix=';', intents=intents, help_command=None)
 game_states = {}
 tracked_teams = {}  # Store team filters per server
 injury_cache = {}  # Cache injury reports
+recent_commands = {}  # Track recent commands to prevent duplicates
 
 # API endpoints for various sports
 SPORT_APIS = {
@@ -1093,6 +1094,16 @@ async def on_ready():
     print(f"🌐 Connected to {len(bot.guilds)} server(s)")
     print(f"🔗 Health endpoint available at port {os.getenv('PORT', 10000)}")
     print("=" * 50)
+
+
+@bot.event
+async def on_message(message):
+    # Ignore messages from the bot itself
+    if message.author == bot.user:
+        return
+
+    # Process commands - this should only happen once
+    await bot.process_commands(message)
 
 
 @bot.event
