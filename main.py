@@ -1096,16 +1096,6 @@ async def on_ready():
 
 
 @bot.event
-async def on_message(message):
-    # Ignore messages from the bot itself
-    if message.author == bot.user:
-        return
-
-    # Process commands - this should only happen once
-    await bot.process_commands(message)
-
-
-@bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
