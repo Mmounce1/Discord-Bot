@@ -1082,7 +1082,7 @@ async def updates(ctx, sport: str, *, team_or_player: str = None):
 
 
 @bot.command()
-async def botping(ctx):
+async def ping(ctx):
     """Check bot latency"""
     await ctx.send(f'🏓 Pong! {round(bot.latency * 1000)}ms')
 
