@@ -3,16 +3,6 @@ aiohttp>=3.9.0
 python-dotenv>=1.0.0
 Flask>=3.0.0
 
-# Add the requirements file
-git add requirements.txt
-
-# Commit it
-git commit -m "Add requirements.txt for Render deployment"
-
-# Push to GitHub
-git push origin main
-```
-
 echo "# Discord-Bot" >> README.md
 git init
 git add README.md
