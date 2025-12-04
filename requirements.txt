@@ -3,8 +3,6 @@ aiohttp>=3.9.0
 python-dotenv>=1.0.0
 Flask>=3.0.0
 
-cd C:\Users\burry\PycharmProjects\DiscordBot
-
 # Add the requirements file
 git add requirements.txt
 
