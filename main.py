@@ -13,7 +13,7 @@ load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
 ESPN_API_KEY = os.getenv('ESPN_API_KEY', '')  # Optional
 
-UPDATE_CHANNEL_ID = int(os.getenv('UPDATE_CHANNEL_ID', 1445902210277052639))
+UPDATE_CHANNEL_ID = int(os.getenv('UPDATE_CHANNEL_ID', 1444925754457460819))
 
 # Flask app for health checks (keeps Render from sleeping)
 app = Flask(__name__)
@@ -57,7 +57,9 @@ SPORT_APIS = {
     'nhl': 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
     'ncaab': 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard',
     'ncaaf': 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
-    'mma': 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard'
+    'mma': 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard',
+    'tennis': 'https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard',
+    'wtennis': 'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard'
 }
 
 
@@ -97,7 +99,9 @@ class SportsTracker:
             'nhl': 'hockey/nhl',
             'ncaab': 'basketball/mens-college-basketball',
             'ncaaf': 'football/college-football',
-            'mma': 'mma/ufc'
+            'mma': 'mma/ufc',
+            'tennis': 'tennis/atp',
+            'wtennis': 'tennis/wta'
         }
         return paths.get(sport, '')
 
@@ -457,7 +461,7 @@ async def help(ctx):
 
     embed.add_field(
         name="🏅 Available Sports",
-        value="`nba`, `nfl`, `nhl`, `ncaab`, `ncaaf`, `mma`",
+        value="`nba`, `nfl`, `nhl`, `ncaab`, `ncaaf`, `mma`, `tennis`, `wtennis`",
         inline=False
     )
 
@@ -852,6 +856,243 @@ async def ping(ctx):
     await ctx.send(f'🏓 Pong! {round(bot.latency * 1000)}ms')
 
 
+@bot.command()
+async def livescore(ctx, sport: str, *, search_term: str = None):
+    """Get live scores with auto-updates for a specific sport or team"""
+    sport = sport.lower()
+    if sport not in SPORT_APIS:
+        await ctx.send(f"❌ Invalid sport. Available: {', '.join(SPORT_APIS.keys())}")
+        return
+
+    data = await tracker.fetch_data(SPORT_APIS[sport])
+    if not data:
+        await ctx.send("❌ Failed to fetch data.")
+        return
+
+    events = data.get('events', [])
+    live_games = []
+
+    for game in events:
+        status = game.get('status', {}).get('type', {}).get('name', '')
+        if status == 'STATUS_IN_PROGRESS':
+            # If search term provided, filter by team name
+            if search_term:
+                competition = game.get('competitions', [{}])[0]
+                competitors = competition.get('competitors', [])
+                team_names = ' '.join([c.get('team', {}).get('displayName', '').lower() for c in competitors])
+                if search_term.lower() not in team_names:
+                    continue
+            live_games.append(game)
+
+    if not live_games:
+        await ctx.send(
+            f"📭 No live games found for {sport.upper()}" + (f" matching '{search_term}'" if search_term else ""))
+        return
+
+    # Send initial scores
+    embed = discord.Embed(
+        title=f"🔴 LIVE: {sport.upper()} Scores",
+        description=f"Live updates • Refreshing every 30 seconds",
+        color=discord.Color.green()
+    )
+
+    for game in live_games[:5]:
+        competition = game.get('competitions', [{}])[0]
+        competitors = competition.get('competitors', [])
+
+        if len(competitors) >= 2:
+            home_team = next((team for team in competitors if team.get('homeAway') == 'home'), {})
+            away_team = next((team for team in competitors if team.get('homeAway') == 'away'), {})
+
+            home_name = home_team.get('team', {}).get('displayName', 'Unknown')
+            away_name = away_team.get('team', {}).get('displayName', 'Unknown')
+            home_score = home_team.get('score', '0')
+            away_score = away_team.get('score', '0')
+
+            status_detail = game.get('status', {}).get('type', {}).get('detail', 'Live')
+
+            embed.add_field(
+                name=f"{away_name} @ {home_name}",
+                value=f"**{away_score} - {home_score}**\n{status_detail}",
+                inline=False
+            )
+
+    message = await ctx.send(embed=embed)
+
+    # Update scores every 30 seconds for 5 minutes
+    for _ in range(10):
+        await asyncio.sleep(30)
+
+        # Fetch new data
+        data = await tracker.fetch_data(SPORT_APIS[sport])
+        if not data:
+            break
+
+        # Update embed with new scores
+        embed.clear_fields()
+        embed.timestamp = datetime.utcnow()
+
+        events = data.get('events', [])
+        updated_count = 0
+
+        for game in events:
+            status = game.get('status', {}).get('type', {}).get('name', '')
+            if status == 'STATUS_IN_PROGRESS':
+                if search_term:
+                    competition = game.get('competitions', [{}])[0]
+                    competitors = competition.get('competitors', [])
+                    team_names = ' '.join([c.get('team', {}).get('displayName', '').lower() for c in competitors])
+                    if search_term.lower() not in team_names:
+                        continue
+
+                competition = game.get('competitions', [{}])[0]
+                competitors = competition.get('competitors', [])
+
+                if len(competitors) >= 2:
+                    home_team = next((team for team in competitors if team.get('homeAway') == 'home'), {})
+                    away_team = next((team for team in competitors if team.get('homeAway') == 'away'), {})
+
+                    home_name = home_team.get('team', {}).get('displayName', 'Unknown')
+                    away_name = away_team.get('team', {}).get('displayName', 'Unknown')
+                    home_score = home_team.get('score', '0')
+                    away_score = away_team.get('score', '0')
+
+                    status_detail = game.get('status', {}).get('type', {}).get('detail', 'Live')
+
+                    embed.add_field(
+                        name=f"{away_name} @ {home_name}",
+                        value=f"**{away_score} - {home_score}**\n{status_detail}",
+                        inline=False
+                    )
+                    updated_count += 1
+
+                    if updated_count >= 5:
+                        break
+
+        if updated_count == 0:
+            embed.description = "All games have ended or no live games found"
+            await message.edit(embed=embed)
+            break
+
+        try:
+            await message.edit(embed=embed)
+        except:
+            break
+
+
+@bot.command()
+async def playerstats(ctx, sport: str, *, player_name: str):
+    """Get live/recent stats for a specific player"""
+    sport = sport.lower()
+    if sport not in SPORT_APIS:
+        await ctx.send(f"❌ Invalid sport. Available: {', '.join(SPORT_APIS.keys())}")
+        return
+
+    await ctx.send(f"🔍 Searching for {player_name}'s stats...")
+
+    # Get today's games
+    data = await tracker.fetch_data(SPORT_APIS[sport])
+    if not data:
+        await ctx.send("❌ Failed to fetch data.")
+        return
+
+    events = data.get('events', [])
+    player_found = False
+
+    for game in events:
+        competition = game.get('competitions', [{}])[0]
+        competitors = competition.get('competitors', [])
+
+        for competitor in competitors:
+            # Look for player in team roster/stats
+            athletes = competitor.get('athletes', [])
+
+            for athlete in athletes:
+                athlete_name = athlete.get('displayName', '').lower()
+                if player_name.lower() in athlete_name:
+                    player_found = True
+
+                    embed = discord.Embed(
+                        title=f"📊 {athlete.get('displayName', 'Unknown')} - Live Stats",
+                        color=discord.Color.blue()
+                    )
+
+                    # Add team info
+                    team_name = competitor.get('team', {}).get('displayName', 'Unknown')
+                    embed.add_field(name="Team", value=team_name, inline=True)
+
+                    # Add position
+                    if athlete.get('position'):
+                        embed.add_field(name="Position", value=athlete.get('position', {}).get('abbreviation', 'N/A'),
+                                        inline=True)
+
+                    # Add jersey number
+                    if athlete.get('jersey'):
+                        embed.add_field(name="Jersey", value=f"#{athlete.get('jersey')}", inline=True)
+
+                    # Add game stats
+                    stats = athlete.get('statistics', [])
+                    if stats:
+                        stats_text = []
+                        for stat in stats:
+                            stat_name = stat.get('displayName', stat.get('name', 'Unknown'))
+                            stat_value = stat.get('displayValue', 'N/A')
+                            stats_text.append(f"**{stat_name}:** {stat_value}")
+
+                        if stats_text:
+                            embed.add_field(name="Game Stats", value="\n".join(stats_text[:8]), inline=False)
+                    else:
+                        embed.add_field(name="Game Stats", value="No stats available yet", inline=False)
+
+                    # Add game context
+                    opponent = next((c for c in competitors if c != competitor), {})
+                    opponent_name = opponent.get('team', {}).get('displayName', 'Unknown')
+                    status = game.get('status', {}).get('type', {}).get('detail', 'Scheduled')
+
+                    embed.add_field(name="Game", value=f"vs {opponent_name}", inline=True)
+                    embed.add_field(name="Status", value=status, inline=True)
+
+                    await ctx.send(embed=embed)
+                    break
+
+            if player_found:
+                break
+
+        if player_found:
+            break
+
+    if not player_found:
+        await ctx.send(
+            f"❌ Player '{player_name}' not found in today's {sport.upper()} games. Try using the `;player` command for general player info.")
+
+
+@bot.command()
+async def updates(ctx, sport: str, *, team_or_player: str = None):
+    """Subscribe to live updates for a sport, team, or player"""
+    sport = sport.lower()
+    if sport not in SPORT_APIS:
+        await ctx.send(f"❌ Invalid sport. Available: {', '.join(SPORT_APIS.keys())}")
+        return
+
+    if team_or_player:
+        await ctx.send(
+            f"✅ Now tracking live updates for **{team_or_player}** in {sport.upper()}!\n💡 Tip: Use `;livescore {sport} {team_or_player}` for manual updates or `;track {sport}` for automatic game updates.")
+    else:
+        # Add to tracking
+        tracker.tracked_sports.add(sport)
+        await ctx.send(
+            f"✅ Now tracking all {sport.upper()} games! Updates will be posted automatically.\n💡 Use `;livescore {sport}` to see current live scores.")
+
+        if not update_sports.is_running():
+            update_sports.start()
+
+
+@bot.command()
+async def ping(ctx):
+    """Check bot latency"""
+    await ctx.send(f'🏓 Pong! {round(bot.latency * 1000)}ms')
+
+
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user.name} (ID: {bot.user.id})")
@@ -887,30 +1128,14 @@ async def shutdown():
 
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🚀 Starting Discord Sports Bot")
-    print(f"📍 Port: {os.getenv('PORT', 10000)}")
-    print("=" * 50)
-
     # Start Flask in a separate thread for health checks
     flask_thread = Thread(target=run_flask, daemon=True)
     flask_thread.start()
     print(f"🌐 Flask server started on port {os.getenv('PORT', 10000)}")
 
-    # Give Flask a moment to start
-    import time
-
-    time.sleep(2)
-
     # Start the bot
     try:
-        print("🤖 Starting Discord bot...")
         bot.run(token, log_handler=handler, log_level=logging.DEBUG)
     except KeyboardInterrupt:
         print("\n🛑 Shutting down...")
-        import asyncio
-
         asyncio.run(shutdown())
-    except Exception as e:
-        print(f"❌ Bot failed to start: {e}")
-        raise
