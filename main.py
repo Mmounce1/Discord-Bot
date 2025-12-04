@@ -13,7 +13,7 @@ load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
 ESPN_API_KEY = os.getenv('ESPN_API_KEY', '')  # Optional
 
-UPDATE_CHANNEL_ID = int(os.getenv('UPDATE_CHANNEL_ID', 1444925754457460819))
+UPDATE_CHANNEL_ID = int(os.getenv('UPDATE_CHANNEL_ID', 1445902210277052639))
 
 # Flask app for health checks (keeps Render from sleeping)
 app = Flask(__name__)
