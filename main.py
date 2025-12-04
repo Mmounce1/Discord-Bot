@@ -887,14 +887,30 @@ async def shutdown():
 
 
 if __name__ == "__main__":
+    print("=" * 50)
+    print("🚀 Starting Discord Sports Bot")
+    print(f"📍 Port: {os.getenv('PORT', 10000)}")
+    print("=" * 50)
+
     # Start Flask in a separate thread for health checks
     flask_thread = Thread(target=run_flask, daemon=True)
     flask_thread.start()
     print(f"🌐 Flask server started on port {os.getenv('PORT', 10000)}")
 
+    # Give Flask a moment to start
+    import time
+
+    time.sleep(2)
+
     # Start the bot
     try:
+        print("🤖 Starting Discord bot...")
         bot.run(token, log_handler=handler, log_level=logging.DEBUG)
     except KeyboardInterrupt:
         print("\n🛑 Shutting down...")
+        import asyncio
+
         asyncio.run(shutdown())
+    except Exception as e:
+        print(f"❌ Bot failed to start: {e}")
+        raise
